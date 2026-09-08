@@ -1,0 +1,29 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Gateway/">
+    <Project Path="src/Gateway/TicketFlow.Gateway/TicketFlow.Gateway.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Booking/">
+    <Project Path="src/Services/Booking/TicketFlow.Booking.Api/TicketFlow.Booking.Api.csproj" />
+    <Project Path="src/Services/Booking/TicketFlow.Booking.Application/TicketFlow.Booking.Application.csproj" />
+    <Project Path="src/Services/Booking/TicketFlow.Booking.Domain/TicketFlow.Booking.Domain.csproj" />
+    <Project Path="src/Services/Booking/TicketFlow.Booking.Infrastructure/TicketFlow.Booking.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Events/">
+    <Project Path="src/Services/Events/TicketFlow.Events.Api/TicketFlow.Events.Api.csproj" />
+    <Project Path="src/Services/Events/TicketFlow.Events.Application/TicketFlow.Events.Application.csproj" />
+    <Project Path="src/Services/Events/TicketFlow.Events.Domain/TicketFlow.Events.Domain.csproj" />
+    <Project Path="src/Services/Events/TicketFlow.Events.Infrastructure/TicketFlow.Events.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Notification/">
+    <Project Path="src/Services/Notification/TicketFlow.Notification.Worker/TicketFlow.Notification.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/TicketFlow.Contracts/TicketFlow.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TicketFlow.Booking.Tests/TicketFlow.Booking.Tests.csproj" />
+    <Project Path="tests/TicketFlow.Events.Tests/TicketFlow.Events.Tests.csproj" />
+  </Folder>
+</Solution>
