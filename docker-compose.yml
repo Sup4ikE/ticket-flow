@@ -2,6 +2,7 @@ services:
   events-db:
     image: postgres:17-alpine
     container_name: tf-events-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ticketflow
       POSTGRES_PASSWORD: ticketflow
@@ -19,6 +20,7 @@ services:
   booking-db:
     image: postgres:17-alpine
     container_name: tf-booking-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ticketflow
       POSTGRES_PASSWORD: ticketflow
@@ -36,6 +38,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: tf-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -47,6 +50,7 @@ services:
   rabbitmq:
     image: rabbitmq:4-management-alpine
     container_name: tf-rabbitmq
+    restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ticketflow
       RABBITMQ_DEFAULT_PASS: ticketflow
