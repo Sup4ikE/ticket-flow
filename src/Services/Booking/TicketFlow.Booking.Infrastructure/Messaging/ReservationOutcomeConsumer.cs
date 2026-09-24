@@ -22,6 +22,7 @@ public class ReservationOutcomeConsumer(
     private const string QueueName = "booking.reservation-outcome";
     private const string SeatsReservedRoutingKey = "events.seatsreserved";
     private const string SeatsReservationFailedRoutingKey = "events.seatsreservationfailed";
+    private const string ReservationExpiredRoutingKey = "events.reservationexpired";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -33,6 +34,7 @@ public class ReservationOutcomeConsumer(
         await channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
         await channel.QueueBindAsync(QueueName, ExchangeName, SeatsReservedRoutingKey, cancellationToken: stoppingToken);
         await channel.QueueBindAsync(QueueName, ExchangeName, SeatsReservationFailedRoutingKey, cancellationToken: stoppingToken);
+        await channel.QueueBindAsync(QueueName, ExchangeName, ReservationExpiredRoutingKey, cancellationToken: stoppingToken);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
 
@@ -74,8 +76,11 @@ public class ReservationOutcomeConsumer(
             return;
         }
 
-        string outboxType;
-        object outboxEvent;
+        // Set only when this outcome produces a downstream event; left null for a guarded no-op
+        // (booking already moved on) or for SeatsReserved, which no longer publishes anything itself -
+        // BookingConfirmed now comes from the explicit POST /pay instead.
+        string? outboxType = null;
+        object? outboxEvent = null;
 
         switch (routingKey)
         {
@@ -87,32 +92,19 @@ public class ReservationOutcomeConsumer(
                 var booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == seatsReserved.BookingId, ct)
                     ?? throw new InvalidOperationException($"Booking {seatsReserved.BookingId} not found");
 
-                // Confirm/Cancel only accept a Pending booking and throw otherwise. A booking can already be
-                // out of Pending here if this outcome is a duplicate produced upstream (e.g. Events redelivering
-                // under a new MessageId). Without this guard that throw would nack+requeue forever - the exact
-                // infinite-retry-loop bug we hit and fixed on the Events side.
+                // MarkAwaitingPayment only accepts a Pending booking and throws otherwise. A booking can
+                // already be out of Pending here if this outcome is a duplicate produced upstream (e.g.
+                // Events redelivering under a new MessageId). Without this guard that throw would
+                // nack+requeue forever - the exact infinite-retry-loop bug we hit and fixed on Events.
                 if (booking.Status != BookingStatus.Pending)
                 {
                     logger.LogWarning(
                         "Booking {BookingId} is already {Status}, skipping SeatsReserved outcome for message {MessageId}",
                         booking.Id, booking.Status, messageId);
-                    db.ProcessedMessages.Add(ProcessedMessage.Create(messageId));
-                    await db.SaveChangesAsync(ct);
-                    return;
+                    break;
                 }
 
-                booking.Confirm(seatsReserved.HoldExpiresAt);
-
-                outboxType = nameof(BookingConfirmed);
-                outboxEvent = new BookingConfirmed
-                {
-                    BookingId = booking.Id,
-                    UserEmail = booking.UserEmail,
-                    EventTitle = booking.EventTitle,
-                    EventStartsAt = booking.EventStartsAt,
-                    Quantity = booking.Quantity,
-                    TotalPrice = booking.TotalPrice
-                };
+                booking.MarkAwaitingPayment(seatsReserved.ReservationId, seatsReserved.HoldExpiresAt);
                 break;
             }
             case SeatsReservationFailedRoutingKey:
@@ -128,9 +120,7 @@ public class ReservationOutcomeConsumer(
                     logger.LogWarning(
                         "Booking {BookingId} is already {Status}, skipping SeatsReservationFailed outcome for message {MessageId}",
                         booking.Id, booking.Status, messageId);
-                    db.ProcessedMessages.Add(ProcessedMessage.Create(messageId));
-                    await db.SaveChangesAsync(ct);
-                    return;
+                    break;
                 }
 
                 booking.Cancel();
@@ -145,12 +135,48 @@ public class ReservationOutcomeConsumer(
                 };
                 break;
             }
+            case ReservationExpiredRoutingKey:
+            {
+                var reservationExpired = JsonSerializer.Deserialize<ReservationExpired>(json)
+                    ?? throw new InvalidOperationException("Could not deserialize ReservationExpired");
+
+                var booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == reservationExpired.BookingId, ct)
+                    ?? throw new InvalidOperationException($"Booking {reservationExpired.BookingId} not found");
+
+                // Only cancel if this is still the reservation we're waiting on. If the booking already
+                // moved on - paid in time (Confirmed) or was cancelled by the user - this expiry lost the
+                // race and is a no-op, not an error.
+                if (booking.Status != BookingStatus.AwaitingPayment || booking.ReservationId != reservationExpired.ReservationId)
+                {
+                    logger.LogWarning(
+                        "Booking {BookingId} is {Status} (reservation {ReservationId}), skipping ReservationExpired outcome for message {MessageId}",
+                        booking.Id, booking.Status, booking.ReservationId, messageId);
+                    break;
+                }
+
+                booking.Cancel();
+
+                outboxType = nameof(BookingCancelled);
+                outboxEvent = new BookingCancelled
+                {
+                    BookingId = booking.Id,
+                    UserEmail = booking.UserEmail,
+                    EventTitle = booking.EventTitle,
+                    Reason = "ReservationExpired"
+                };
+                break;
+            }
             default:
                 throw new InvalidOperationException($"Unexpected routing key '{routingKey}' on queue {QueueName}");
         }
 
         db.ProcessedMessages.Add(ProcessedMessage.Create(messageId));
-        db.OutboxMessages.Add(OutboxMessage.Create(outboxType, JsonSerializer.Serialize(outboxEvent)));
+
+        if (outboxType is not null)
+        {
+            db.OutboxMessages.Add(OutboxMessage.Create(outboxType, JsonSerializer.Serialize(outboxEvent)));
+        }
+
         await db.SaveChangesAsync(ct);
     }
 

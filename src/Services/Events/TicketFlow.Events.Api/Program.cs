@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RabbitMQ.Client;
 using TicketFlow.Events.Application.Abstractions;
+using TicketFlow.Events.Application.Configuration;
 using TicketFlow.Events.Application.Services;
 using TicketFlow.Events.Infrastructure.Messaging;
 using TicketFlow.Events.Infrastructure.Persistence;
@@ -25,12 +26,17 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<EventsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("EventsDb")));
 
+builder.Services.Configure<ReservationSettings>(builder.Configuration.GetSection("ReservationSettings"));
+
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IEventPublisher, RabbitMqEventPublisher>();
 builder.Services.AddHostedService<BookingCreatedConsumer>();
 builder.Services.AddHostedService<OutboxPublisherWorker>();
+builder.Services.AddHostedService<ReservationExpiryWorker>();
+builder.Services.AddHostedService<SeatsReleaseRequestedConsumer>();
+builder.Services.AddHostedService<BookingConfirmedConsumer>();
 
 var app = builder.Build();
 

@@ -4,9 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using TicketFlow.Contracts.Events;
+using TicketFlow.Events.Application.Configuration;
 using TicketFlow.Events.Domain.Entities;
 using TicketFlow.Events.Infrastructure.Persistence;
 
@@ -15,6 +17,7 @@ namespace TicketFlow.Events.Infrastructure.Messaging;
 public class BookingCreatedConsumer(
     IConnection connection,
     IServiceScopeFactory scopeFactory,
+    IOptions<ReservationSettings> reservationSettings,
     ILogger<BookingCreatedConsumer> logger) : BackgroundService
 {
     private const string ExchangeName = "ticketflow.events";
@@ -87,7 +90,7 @@ public class BookingCreatedConsumer(
         }
         else
         {
-            var result = @event.TryReserve(bookingCreated.BookingId, bookingCreated.Quantity, TimeSpan.FromMinutes(10));
+            var result = @event.TryReserve(bookingCreated.BookingId, bookingCreated.Quantity, reservationSettings.Value.HoldDuration);
 
             if (result.IsSuccess)
             {
