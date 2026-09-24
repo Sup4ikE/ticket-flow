@@ -7,6 +7,8 @@ public class EventsDbContext(DbContextOptions<EventsDbContext> options) : DbCont
 {
     public DbSet<Event> Events => Set<Event>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
