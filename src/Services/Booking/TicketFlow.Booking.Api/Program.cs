@@ -2,6 +2,7 @@ using RabbitMQ.Client;
 using Microsoft.EntityFrameworkCore;
 using TicketFlow.Booking.Application.Abstractions;
 using TicketFlow.Booking.Application.Commands;
+using TicketFlow.Booking.Infrastructure.Http;
 using TicketFlow.Booking.Infrastructure.Messaging;
 using TicketFlow.Booking.Infrastructure.Persistence;
 using TicketFlow.Booking.Infrastructure.Persistence.Repositories;
@@ -32,6 +33,13 @@ builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
 builder.Services.AddHostedService<OutboxPublisherWorker>();
 builder.Services.AddHostedService<ReservationOutcomeConsumer>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+builder.Services.AddHttpClient<IEventCatalog, EventsApiClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:EventsApi:BaseUrl"]
+        ?? throw new InvalidOperationException("Configuration value 'Services:EventsApi:BaseUrl' is missing."));
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
 
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(CreateBookingCommand).Assembly));

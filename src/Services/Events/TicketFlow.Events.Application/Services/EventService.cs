@@ -5,12 +5,22 @@ using TicketFlow.Events.Domain.Entities;
 
 namespace TicketFlow.Events.Application.Services;
 
-public class EventService(IEventRepository repository, IUnitOfWork unitOfWork) : IEventService
+public class EventService(
+    IEventRepository repository,
+    IUnitOfWork unitOfWork,
+    IPublishedEventsCache publishedEventsCache) : IEventService
 {
-    public async Task<List<EventDto>> GetPublishedEventsAsync(CancellationToken ct = default)
+    public async Task<List<EventSummaryDto>> GetPublishedEventsAsync(CancellationToken ct = default)
     {
+        var cached = await publishedEventsCache.GetAsync(ct);
+        if (cached is not null)
+            return cached;
+
         var events = await repository.GetPublishedAsync(ct);
-        return events.Select(e => e.ToDto()).ToList();
+        var dtos = events.Select(e => e.ToSummaryDto()).ToList();
+
+        await publishedEventsCache.SetAsync(dtos, ct);
+        return dtos;
     }
 
     public async Task<EventDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -31,6 +41,7 @@ public class EventService(IEventRepository repository, IUnitOfWork unitOfWork) :
 
         repository.Add(@event);
         await unitOfWork.SaveChangesAsync(ct);
+        await publishedEventsCache.InvalidateAsync(ct);
 
         return @event.ToDto();
     }
@@ -43,6 +54,7 @@ public class EventService(IEventRepository repository, IUnitOfWork unitOfWork) :
 
         @event.Publish();
         await unitOfWork.SaveChangesAsync(ct);
+        await publishedEventsCache.InvalidateAsync(ct);
 
         return true;
     }

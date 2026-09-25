@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using RabbitMQ.Client;
+using StackExchange.Redis;
 using TicketFlow.Events.Application.Abstractions;
 using TicketFlow.Events.Application.Configuration;
 using TicketFlow.Events.Application.Services;
+using TicketFlow.Events.Infrastructure.Caching;
 using TicketFlow.Events.Infrastructure.Messaging;
 using TicketFlow.Events.Infrastructure.Persistence;
 using TicketFlow.Events.Infrastructure.Persistence.Repositories;
@@ -19,6 +21,18 @@ var factory = new ConnectionFactory
 
 var connection = await factory.CreateConnectionAsync();
 builder.Services.AddSingleton(connection);
+
+// AbortOnConnectFail=false: the service must start and serve from Postgres even when Redis is down.
+// BacklogPolicy.FailFast: while disconnected, commands fail immediately instead of queueing until AsyncTimeout,
+// so the Postgres fallback costs nothing extra; short timeouts cover a Redis that is up but unresponsive.
+var redisOptions = ConfigurationOptions.Parse(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
+redisOptions.AbortOnConnectFail = false;
+redisOptions.BacklogPolicy = BacklogPolicy.FailFast;
+redisOptions.ConnectTimeout = 2000;
+redisOptions.SyncTimeout = 1000;
+redisOptions.AsyncTimeout = 1000;
+builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisOptions));
+builder.Services.AddSingleton<IPublishedEventsCache, RedisPublishedEventsCache>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();

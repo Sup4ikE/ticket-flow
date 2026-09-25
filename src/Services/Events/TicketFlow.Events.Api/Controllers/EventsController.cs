@@ -10,7 +10,7 @@ namespace TicketFlow.Events.Api.Controllers;
 public class EventsController(IEventService eventService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<EventDto>>> GetAll(CancellationToken ct) =>
+    public async Task<ActionResult<List<EventSummaryDto>>> GetAll(CancellationToken ct) =>
         Ok(await eventService.GetPublishedEventsAsync(ct));
 
     [HttpGet("{id:guid}")]
