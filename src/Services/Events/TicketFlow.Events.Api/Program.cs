@@ -40,6 +40,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<EventsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("EventsDb")));
 
+builder.Services.AddHealthChecks().AddDbContextCheck<EventsDbContext>();
+
 builder.Services.Configure<ReservationSettings>(builder.Configuration.GetSection("ReservationSettings"));
 
 builder.Services.AddScoped<IEventRepository, EventRepository>();
@@ -54,10 +56,23 @@ builder.Services.AddHostedService<BookingConfirmedConsumer>();
 
 var app = builder.Build();
 
+// Containers opt in via Database__MigrateOnStartup (docker-compose.yml); local dev keeps applying
+// migrations by hand with `dotnet ef database update`, so this never runs there.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<EventsDbContext>().Database.MigrateAsync();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
 
+// Sample meetups: always in Development, and in containers when Database__SeedSampleData is set.
+// The seeder is a no-op once any event exists.
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Database:SeedSampleData"))
+{
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<EventsDbContext>();
     await EventsDbSeeder.SeedAsync(db);
@@ -66,5 +81,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapControllers();
+
+// Used by the docker-compose healthcheck. Only reachable once app.Run() starts, i.e. after the startup
+// migration above, so "healthy" also means "schema is up to date and the database answers".
+app.MapHealthChecks("/health");
 
 app.Run();

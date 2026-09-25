@@ -27,6 +27,8 @@ builder.Services.AddSingleton(connection);
 builder.Services.AddDbContext<BookingDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("BookingDb")));
 
+builder.Services.AddHealthChecks().AddDbContextCheck<BookingDbContext>();
+
 builder.Services.AddScoped<IEventPublisher, RabbitMqEventPublisher>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
@@ -46,6 +48,14 @@ builder.Services.AddMediatR(cfg =>
 
 var app = builder.Build();
 
+// Containers opt in via Database__MigrateOnStartup (docker-compose.yml); local dev keeps applying
+// migrations by hand with `dotnet ef database update`, so this never runs there.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<BookingDbContext>().Database.MigrateAsync();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -54,5 +64,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapControllers();
+
+// Used by the docker-compose healthcheck. Only reachable once app.Run() starts, i.e. after the startup
+// migration above, so "healthy" also means "schema is up to date and the database answers".
+app.MapHealthChecks("/health");
 
 app.Run();

@@ -1,0 +1,12 @@
+# Build context for the .NET images is the repo root; keep it to what `dotnet publish` needs.
+**/bin/
+**/obj/
+**/node_modules/
+**/.DS_Store
+.git/
+.idea/
+.vs/
+frontend/
+tests/
+**/Dockerfile
+docker-compose.yml
