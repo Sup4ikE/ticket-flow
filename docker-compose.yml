@@ -35,6 +35,24 @@ services:
       timeout: 3s
       retries: 5
 
+  notification-db:
+    image: postgres:17-alpine
+    container_name: tf-notification-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ticketflow
+      POSTGRES_PASSWORD: ticketflow
+      POSTGRES_DB: notification
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketflow -d notification"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: tf-redis
@@ -66,3 +84,4 @@ services:
 volumes:
   events-db-data:
   booking-db-data:
+  notification-db-data:

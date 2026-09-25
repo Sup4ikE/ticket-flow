@@ -34,6 +34,18 @@ public class CancelBookingCommandHandler(
                 })));
         }
 
+        // Unconditional, unlike the release above: the user cancelled regardless of whether seats were
+        // ever held, so they get the same notification as the NotEnoughSeats / ReservationExpired paths.
+        outboxRepository.Add(OutboxMessage.Create(
+            nameof(BookingCancelled),
+            JsonSerializer.Serialize(new BookingCancelled
+            {
+                BookingId = booking.Id,
+                UserEmail = booking.UserEmail,
+                EventTitle = booking.EventTitle,
+                Reason = "UserCancelled"
+            })));
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return booking.Status;
