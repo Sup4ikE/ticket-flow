@@ -18,7 +18,7 @@ jobs:
   # The job id is the status check name GitHub shows on PRs ("build-and-test") - the one to require
   # in main's branch protection. Renaming it means updating that rule too.
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     env:
