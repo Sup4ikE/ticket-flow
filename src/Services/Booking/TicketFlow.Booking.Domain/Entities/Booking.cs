@@ -13,6 +13,8 @@ public class Booking
     public DateTime CreatedAt { get; private set; }
     public DateTime? HoldExpiresAt { get; private set; }
     public Guid? ReservationId { get; private set; }
+    /// <summary>Set only when Status is Cancelled; null for any other status (and for bookings cancelled before this was tracked).</summary>
+    public BookingCancellationReason? CancellationReason { get; private set; }
     
     public string EventTitle { get; private set; } = string.Empty;
     public DateTime EventStartsAt { get; private set; }
@@ -80,11 +82,12 @@ public class Booking
         Status = BookingStatus.Confirmed;
     }
 
-    public void Cancel()
+    public void Cancel(BookingCancellationReason reason)
     {
         if (Status is not (BookingStatus.Pending or BookingStatus.AwaitingPayment))
             throw new DomainException($"Booking cannot be cancelled: current status is {Status}.");
 
         Status = BookingStatus.Cancelled;
+        CancellationReason = reason;
     }
 }

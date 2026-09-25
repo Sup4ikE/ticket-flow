@@ -1,4 +1,4 @@
-import type { CreateBookingRequest } from '@/types/booking'
+import type { Booking, BookingStatus, CreateBookingRequest } from '@/types/booking'
 import type { EventDetails, EventSummary } from '@/types/event'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/+$/, '')
@@ -42,3 +42,13 @@ export const getEventById = (id: string) => request<EventDetails>(`/api/events/$
 /** 201 { id }. Price and event title are resolved server-side from Events - never sent by the client. */
 export const createBooking = (payload: CreateBookingRequest) =>
   request<{ id: string }>('/api/bookings', { method: 'POST', body: JSON.stringify(payload) })
+
+export const getBookingById = (id: string) => request<Booking>(`/api/bookings/${encodeURIComponent(id)}`)
+
+/** 200 { id, status }; 409 { error } when the booking is not AwaitingPayment. */
+export const payBooking = (id: string) =>
+  request<{ id: string; status: BookingStatus }>(`/api/bookings/${encodeURIComponent(id)}/pay`, { method: 'POST' })
+
+/** 200 { id, status }; 409 { error } when the booking is already Confirmed/Cancelled. */
+export const cancelBooking = (id: string) =>
+  request<{ id: string; status: BookingStatus }>(`/api/bookings/${encodeURIComponent(id)}/cancel`, { method: 'POST' })

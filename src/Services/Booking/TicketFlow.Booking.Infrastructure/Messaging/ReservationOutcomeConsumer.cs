@@ -123,7 +123,8 @@ public class ReservationOutcomeConsumer(
                     break;
                 }
 
-                booking.Cancel();
+                var reason = ToCancellationReason(seatsReservationFailed.Reason);
+                booking.Cancel(reason);
 
                 outboxType = nameof(BookingCancelled);
                 outboxEvent = new BookingCancelled
@@ -131,7 +132,7 @@ public class ReservationOutcomeConsumer(
                     BookingId = booking.Id,
                     UserEmail = booking.UserEmail,
                     EventTitle = booking.EventTitle,
-                    Reason = seatsReservationFailed.Reason.ToString()
+                    Reason = reason.ToString()
                 };
                 break;
             }
@@ -154,7 +155,8 @@ public class ReservationOutcomeConsumer(
                     break;
                 }
 
-                booking.Cancel();
+                const BookingCancellationReason reason = BookingCancellationReason.ReservationExpired;
+                booking.Cancel(reason);
 
                 outboxType = nameof(BookingCancelled);
                 outboxEvent = new BookingCancelled
@@ -162,7 +164,7 @@ public class ReservationOutcomeConsumer(
                     BookingId = booking.Id,
                     UserEmail = booking.UserEmail,
                     EventTitle = booking.EventTitle,
-                    Reason = "ReservationExpired"
+                    Reason = reason.ToString()
                 };
                 break;
             }
@@ -179,6 +181,17 @@ public class ReservationOutcomeConsumer(
 
         await db.SaveChangesAsync(ct);
     }
+
+    // Exhaustive on purpose: a new ReservationFailureReason in Contracts should fail loudly here (nack + log),
+    // not silently get recorded as some other reason.
+    private static BookingCancellationReason ToCancellationReason(ReservationFailureReason reason) => reason switch
+    {
+        ReservationFailureReason.NotEnoughSeats => BookingCancellationReason.NotEnoughSeats,
+        ReservationFailureReason.EventNotFound => BookingCancellationReason.EventNotFound,
+        ReservationFailureReason.EventCancelled => BookingCancellationReason.EventCancelled,
+        ReservationFailureReason.EventAlreadyStarted => BookingCancellationReason.EventAlreadyStarted,
+        _ => throw new InvalidOperationException($"Unknown reservation failure reason '{reason}'")
+    };
 
     private sealed record MessageEnvelope(Guid MessageId);
 }
