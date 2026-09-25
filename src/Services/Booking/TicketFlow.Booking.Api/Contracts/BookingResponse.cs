@@ -12,7 +12,8 @@ public record BookingResponse(
     string Status,
     Guid? ReservationId,
     DateTime? HoldExpiresAt,
-    DateTime CreatedAt)
+    DateTime CreatedAt,
+    string? CancellationReason)
 {
     public static BookingResponse From(Domain.Entities.Booking booking) => new(
         booking.Id,
@@ -26,5 +27,6 @@ public record BookingResponse(
         booking.Status.ToString(),
         booking.ReservationId,
         booking.HoldExpiresAt,
-        booking.CreatedAt);
+        booking.CreatedAt,
+        booking.CancellationReason?.ToString());
 }

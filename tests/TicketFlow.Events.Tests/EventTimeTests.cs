@@ -33,7 +33,7 @@ public class EventTimeTests
         var ex = Assert.Throws<DomainException>(() =>
             Event.Create("Late", "desc", StartsAt, "UNIT.City", 10, 250m, _clock));
 
-        Assert.Equal("Event cannot start in the past.", ex.Message);
+        Assert.Equal("Дата початку події не може бути в минулому.", ex.Message);
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class EventTimeTests
 
         var ex = Assert.Throws<DomainException>(() => _event.Publish(_clock));
 
-        Assert.Equal("Cannot publish an event that already started.", ex.Message);
+        Assert.Equal("Не можна опублікувати подію, яка вже почалася.", ex.Message);
         Assert.Equal(EventStatus.Draft, _event.Status);
     }
 

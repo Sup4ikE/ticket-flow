@@ -31,7 +31,7 @@ public class BookingTests
                 booking.Pay();
                 break;
             case BookingStatus.Cancelled:
-                booking.Cancel();
+                booking.Cancel(BookingCancellationReason.UserCancelled);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(status), status, "No domain transition reaches this status");
@@ -98,7 +98,7 @@ public class BookingTests
     {
         var ex = Assert.Throws<DomainException>(() => CreateBooking(pricePerTicket: -1m));
 
-        Assert.Equal("Price per ticket cannot be negative.", ex.Message);
+        Assert.Equal("Ціна квитка не може бути відʼємною.", ex.Message);
     }
 
     [Fact]
@@ -194,9 +194,32 @@ public class BookingTests
     {
         var booking = CreateBookingIn(status);
 
-        booking.Cancel();
+        booking.Cancel(BookingCancellationReason.UserCancelled);
 
         Assert.Equal(BookingStatus.Cancelled, booking.Status);
+    }
+
+    [Theory]
+    [InlineData(BookingStatus.Pending, BookingCancellationReason.NotEnoughSeats)]
+    [InlineData(BookingStatus.Pending, BookingCancellationReason.EventCancelled)]
+    [InlineData(BookingStatus.AwaitingPayment, BookingCancellationReason.ReservationExpired)]
+    [InlineData(BookingStatus.AwaitingPayment, BookingCancellationReason.UserCancelled)]
+    public void Cancel_RecordsReason(BookingStatus status, BookingCancellationReason reason)
+    {
+        var booking = CreateBookingIn(status);
+
+        booking.Cancel(reason);
+
+        Assert.Equal(reason, booking.CancellationReason);
+    }
+
+    [Theory]
+    [InlineData(BookingStatus.Pending)]
+    [InlineData(BookingStatus.AwaitingPayment)]
+    [InlineData(BookingStatus.Confirmed)]
+    public void CancellationReason_NotCancelled_IsNull(BookingStatus status)
+    {
+        Assert.Null(CreateBookingIn(status).CancellationReason);
     }
 
     [Theory]
@@ -205,10 +228,13 @@ public class BookingTests
     public void Cancel_FromTerminalStatus_ThrowsWithCurrentStatusInMessage(BookingStatus status)
     {
         var booking = CreateBookingIn(status);
+        var reasonBefore = booking.CancellationReason;
 
-        var ex = Assert.Throws<DomainException>(booking.Cancel);
+        var ex = Assert.Throws<DomainException>(() => booking.Cancel(BookingCancellationReason.ReservationExpired));
 
         Assert.Contains($"current status is {status}", ex.Message);
+        // A late expiry must not overwrite why the booking actually ended (e.g. the user's own cancel).
+        Assert.Equal(reasonBefore, booking.CancellationReason);
     }
 
     [Fact]
@@ -217,8 +243,9 @@ public class BookingTests
         var booking = CreateBookingIn(BookingStatus.AwaitingPayment);
         booking.Pay();
 
-        Assert.Throws<DomainException>(booking.Cancel);
+        Assert.Throws<DomainException>(() => booking.Cancel(BookingCancellationReason.ReservationExpired));
 
         Assert.Equal(BookingStatus.Confirmed, booking.Status);
+        Assert.Null(booking.CancellationReason);
     }
 }

@@ -19,7 +19,8 @@ public class CancelBookingCommandHandler(
 
         var reservationId = booking.ReservationId;
 
-        booking.Cancel();
+        const BookingCancellationReason reason = BookingCancellationReason.UserCancelled;
+        booking.Cancel(reason);
 
         // Only a booking that already got SeatsReserved holds seats that need releasing on the
         // Events side; a still-Pending booking never reserved anything there in the first place.
@@ -43,7 +44,7 @@ public class CancelBookingCommandHandler(
                 BookingId = booking.Id,
                 UserEmail = booking.UserEmail,
                 EventTitle = booking.EventTitle,
-                Reason = "UserCancelled"
+                Reason = reason.ToString()
             })));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
