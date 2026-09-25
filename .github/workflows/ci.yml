@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [dev, main]
+
+# A newer push to the same branch/PR makes the older run pointless - cancel it instead of queueing.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # The job id is the status check name GitHub shows on PRs ("build-and-test") - the one to require
+  # in main's branch protection. Renaming it means updating that rule too.
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      # setup-dotnet's built-in `cache: true` needs packages.lock.json files, which this repo doesn't use,
+      # so cache the global packages folder keyed on every project file instead.
+      - uses: actions/cache@v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # The whole solution, not just the two test projects: a PR that breaks the APIs, Gateway or
+      # Notification (none of which have tests yet) should fail too. It costs well under a minute.
+      - name: Restore
+        run: dotnet restore TicketFlow.slnx
+
+      - name: Build
+        run: dotnet build TicketFlow.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test TicketFlow.slnx --configuration Release --no-build
+          --logger "console;verbosity=normal"
+          --logger "trx;LogFilePrefix=results"
+          --results-directory TestResults
+
+      # Surface the pass/fail counts on the run page without digging through the log.
+      - name: Test summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Test results"
+            echo
+            echo "| Project | Total | Passed | Failed |"
+            echo "|---|---:|---:|---:|"
+            for f in TestResults/*.trx; do
+              [ -f "$f" ] || continue
+              counters=$(grep -o '<Counters [^>]*>' "$f")
+              get() { echo "$counters" | grep -o "$1=\"[0-9]*\"" | grep -o '[0-9]*'; }
+              name=$(grep -o 'storage="[^"]*\.dll"' "$f" | head -1 | sed 's/.*[\/\\]//; s/\.dll"//')
+              echo "| ${name:-$(basename "$f")} | $(get total) | $(get passed) | $(get failed) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
