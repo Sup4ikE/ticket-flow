@@ -31,8 +31,11 @@ public class Event
         DateTime startsAt,
         string venue,
         int capacity,
-        decimal price)
+        decimal price,
+        TimeProvider? timeProvider = null)
     {
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+
         if (startsAt.Kind != DateTimeKind.Utc)
             startsAt = startsAt.ToUniversalTime();
         
@@ -42,7 +45,7 @@ public class Event
         if (string.IsNullOrWhiteSpace(venue))
             throw new DomainException("Venue is required.");
 
-        if (startsAt <= DateTime.UtcNow)
+        if (startsAt <= now)
             throw new DomainException("Event cannot start in the past.");
 
         if (capacity <= 0)
@@ -62,15 +65,22 @@ public class Event
             AvailableSeats = capacity,
             Price = price,
             Status = EventStatus.Draft,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now
         };
     }
 
-    public ReservationResult TryReserve(Guid bookingId, int quantity, TimeSpan holdDuration)
+    public ReservationResult TryReserve(
+        Guid bookingId, int quantity, TimeSpan holdDuration, TimeProvider? timeProvider = null)
     {
         if (quantity <= 0)
             throw new DomainException("Quantity must be greater than zero.");
 
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+
+        // Deliberately checked BEFORE the event-status/start-time guards below: the first outcome for a bookingId
+        // is final. A redelivered BookingCreated for an already-reserved booking gets its existing hold back even if
+        // the event was cancelled or started since - we don't re-judge an already-processed booking retroactively.
+        // (Released holds are excluded, so a booking whose hold expired goes through the full checks again.)
         var existing = _reservations.FirstOrDefault(r =>
             r.BookingId == bookingId && r.Status != ReservationStatus.Released);
         if (existing is not null)
@@ -82,13 +92,13 @@ public class Event
         if (Status != EventStatus.Published)
             return ReservationResult.Failure(ReservationFailureReason.EventNotFound);
 
-        if (StartsAt <= DateTime.UtcNow)
+        if (StartsAt <= now)
             return ReservationResult.Failure(ReservationFailureReason.EventAlreadyStarted);
 
         if (quantity > AvailableSeats)
             return ReservationResult.Failure(ReservationFailureReason.NotEnoughSeats);
 
-        var reservation = Reservation.Create(Id, bookingId, quantity, holdDuration);
+        var reservation = Reservation.Create(Id, bookingId, quantity, holdDuration, now);
         _reservations.Add(reservation);
         AvailableSeats -= quantity;
 
@@ -117,12 +127,14 @@ public class Event
         return true;
     }
 
-    public void Publish()
+    public void Publish(TimeProvider? timeProvider = null)
     {
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+
         if (Status == EventStatus.Cancelled)
             throw new DomainException("Cannot publish a cancelled event.");
 
-        if (StartsAt <= DateTime.UtcNow)
+        if (StartsAt <= now)
             throw new DomainException("Cannot publish an event that already started.");
 
         Status = EventStatus.Published;

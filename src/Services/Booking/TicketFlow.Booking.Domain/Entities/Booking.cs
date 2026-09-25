@@ -33,7 +33,7 @@ public class Booking
             throw new DomainException("Quantity must be greater than zero.");
         
         if (pricePerTicket < 0) 
-            throw new DomainException("Price per ticket must be greater than zero.");
+            throw new DomainException("Price per ticket cannot be negative.");
         
         if (string.IsNullOrWhiteSpace(userEmail))
             throw new DomainException("User email is required.");
