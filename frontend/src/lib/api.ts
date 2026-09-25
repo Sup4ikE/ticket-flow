@@ -43,6 +43,10 @@ export const getEventById = (id: string) => request<EventDetails>(`/api/events/$
 export const createBooking = (payload: CreateBookingRequest) =>
   request<{ id: string }>('/api/bookings', { method: 'POST', body: JSON.stringify(payload) })
 
+/** Newest first. Unknown email -> []; no email -> 400. */
+export const getBookingsByEmail = (email: string) =>
+  request<Booking[]>(`/api/bookings?email=${encodeURIComponent(email)}`)
+
 export const getBookingById = (id: string) => request<Booking>(`/api/bookings/${encodeURIComponent(id)}`)
 
 /** 200 { id, status }; 409 { error } when the booking is not AwaitingPayment. */

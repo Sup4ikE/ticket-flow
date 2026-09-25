@@ -1,6 +1,22 @@
 import { ApiError } from '@/lib/api'
 import type { BookingCancellationReason, BookingStatus } from '@/types/booking'
 
+/** Compact badge wording + colours, matching the panel colours on BookingStatusPage. */
+export const BOOKING_STATUS_BADGES: Record<BookingStatus, { label: string; className: string; dot: string }> = {
+  Pending: { label: 'Очікує підтвердження', className: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground' },
+  AwaitingPayment: {
+    label: 'Очікує оплати',
+    className: 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
+    dot: 'bg-amber-500',
+  },
+  Confirmed: {
+    label: 'Підтверджено',
+    className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    dot: 'bg-emerald-500',
+  },
+  Cancelled: { label: 'Скасовано', className: 'bg-destructive/10 text-destructive', dot: 'bg-destructive' },
+}
+
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   Pending: 'очікує підтвердження місць',
   AwaitingPayment: 'очікує оплати',

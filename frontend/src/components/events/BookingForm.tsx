@@ -6,11 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createBooking } from '@/lib/api'
+import { INVALID_EMAIL_MESSAGE, isValidEmail } from '@/lib/email'
 import { formatPrice } from '@/lib/format'
 import type { EventDetails } from '@/types/event'
-
-// Stricter than the browser's type="email" check, which accepts "a@b" without a dot in the domain.
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 export function BookingForm({ event }: { event: EventDetails }) {
   const navigate = useNavigate()
@@ -32,8 +30,8 @@ export function BookingForm({ event }: { event: EventDetails }) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const trimmed = email.trim()
-    if (!EMAIL_PATTERN.test(trimmed)) {
-      setEmailError('Введіть коректну адресу, наприклад name@example.com')
+    if (!isValidEmail(trimmed)) {
+      setEmailError(INVALID_EMAIL_MESSAGE)
       return
     }
     setEmailError(null)
