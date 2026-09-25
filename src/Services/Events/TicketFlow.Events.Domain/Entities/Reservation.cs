@@ -16,10 +16,8 @@ public class Reservation
     {
     }
 
-    internal static Reservation Create(Guid eventId, Guid bookingId, int quantity, TimeSpan holdDuration)
+    internal static Reservation Create(Guid eventId, Guid bookingId, int quantity, TimeSpan holdDuration, DateTime now)
     {
-        var now = DateTime.UtcNow;
-
         return new Reservation
         {
             Id = Guid.NewGuid(),

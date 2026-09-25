@@ -1,0 +1,6 @@
+namespace TicketFlow.Events.Application.Abstractions;
+
+public interface IEventPublisher
+{
+    Task PublishAsync(string routingKey, string content, CancellationToken ct = default);
+}

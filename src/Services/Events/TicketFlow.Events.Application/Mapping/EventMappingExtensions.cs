@@ -15,4 +15,14 @@ public static class EventMappingExtensions
             @event.Capacity,
             @event.AvailableSeats,
             @event.Price);
+
+    public static EventSummaryDto ToSummaryDto(this Event @event) =>
+        new(
+            @event.Id,
+            @event.Title,
+            @event.Description,
+            @event.StartsAt,
+            @event.Venue,
+            @event.Capacity,
+            @event.Price);
 }

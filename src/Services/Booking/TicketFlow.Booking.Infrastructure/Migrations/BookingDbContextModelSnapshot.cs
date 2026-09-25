@@ -52,6 +52,9 @@ namespace TicketFlow.Booking.Infrastructure.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("ReservationId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -114,6 +117,20 @@ namespace TicketFlow.Booking.Infrastructure.Migrations
                     b.HasIndex("ProcessedAt");
 
                     b.ToTable("outbox_messages", (string)null);
+                });
+
+            modelBuilder.Entity("TicketFlow.Booking.Domain.Entities.ProcessedMessage", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("MessageId");
+
+                    b.ToTable("processed_messages", (string)null);
                 });
 #pragma warning restore 612, 618
         }

@@ -12,6 +12,7 @@ public class Booking
     public BookingStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? HoldExpiresAt { get; private set; }
+    public Guid? ReservationId { get; private set; }
     
     public string EventTitle { get; private set; } = string.Empty;
     public DateTime EventStartsAt { get; private set; }
@@ -32,7 +33,7 @@ public class Booking
             throw new DomainException("Quantity must be greater than zero.");
         
         if (pricePerTicket < 0) 
-            throw new DomainException("Price per ticket must be greater than zero.");
+            throw new DomainException("Price per ticket cannot be negative.");
         
         if (string.IsNullOrWhiteSpace(userEmail))
             throw new DomainException("User email is required.");
@@ -61,20 +62,29 @@ public class Booking
         };
     }
 
-    public void Confirm(DateTime holdExpiresAt)
+    public void MarkAwaitingPayment(Guid reservationId, DateTime holdExpiresAt)
     {
         if (Status != BookingStatus.Pending)
-            throw new DomainException("Booking is not pending.");
-        
-        Status = BookingStatus.Confirmed;
+            throw new DomainException($"Booking cannot await payment: current status is {Status}.");
+
+        Status = BookingStatus.AwaitingPayment;
+        ReservationId = reservationId;
         HoldExpiresAt = holdExpiresAt;
+    }
+
+    public void Pay()
+    {
+        if (Status != BookingStatus.AwaitingPayment)
+            throw new DomainException($"Booking cannot be paid: current status is {Status}.");
+
+        Status = BookingStatus.Confirmed;
     }
 
     public void Cancel()
     {
-        if (Status != BookingStatus.Pending)
-            throw new DomainException("Booking is not pending.");
-        
+        if (Status is not (BookingStatus.Pending or BookingStatus.AwaitingPayment))
+            throw new DomainException($"Booking cannot be cancelled: current status is {Status}.");
+
         Status = BookingStatus.Cancelled;
     }
 }

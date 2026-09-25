@@ -17,7 +17,7 @@
     <Project Path="src/Services/Events/TicketFlow.Events.Infrastructure/TicketFlow.Events.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Services/Notification/">
-    <Project Path="src/Services/Notification/TicketFlow.Notification.Worker/TicketFlow.Notification.Worker.csproj" />
+    <Project Path="src/Services/Notification/TicketFlow.Notification.Api/TicketFlow.Notification.Api.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/TicketFlow.Contracts/TicketFlow.Contracts.csproj" />

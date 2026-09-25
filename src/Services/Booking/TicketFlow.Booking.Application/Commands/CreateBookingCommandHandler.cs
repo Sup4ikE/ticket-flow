@@ -9,17 +9,21 @@ namespace TicketFlow.Booking.Application.Commands;
 public class CreateBookingCommandHandler(
     IBookingRepository bookingRepository,
     IOutboxRepository outboxRepository,
+    IEventCatalog eventCatalog,
     IUnitOfWork unitOfWork) : IRequestHandler<CreateBookingCommand, Guid>
 {
     public async Task<Guid> Handle(CreateBookingCommand request, CancellationToken cancellationToken)
     {
+        var eventInfo = await eventCatalog.GetEventAsync(request.EventId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Event {request.EventId} not found.");
+
         var booking = Domain.Entities.Booking.Create(
-            request.EventId,
+            eventInfo.Id,
             request.UserEmail,
             request.Quantity,
-            request.EventTitle,
-            request.EventStartsAt,
-            request.PricePerTicket);
+            eventInfo.Title,
+            eventInfo.StartsAt,
+            eventInfo.Price);
 
         var bookingCreatedEvent = new BookingCreated
         {

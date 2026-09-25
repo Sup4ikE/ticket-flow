@@ -6,6 +6,7 @@ public record BookingConfirmed : IIntegrationEvent
     public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
 
     public required Guid BookingId { get; init; }
+    public required Guid ReservationId { get; init; }
     public required string UserEmail { get; init; }
     public required string EventTitle { get; init; }
     public required DateTime EventStartsAt { get; init; }
