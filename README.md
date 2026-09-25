@@ -121,25 +121,28 @@ dotnet test
 
 ## Project structure
 
+```
 src/
-Gateway/
-TicketFlow.Gateway/ YARP reverse proxy
-Services/
-Booking/
-TicketFlow.Booking.Api/
-TicketFlow.Booking.Application/
-TicketFlow.Booking.Domain/
-TicketFlow.Booking.Infrastructure/
-Events/
-TicketFlow.Events.Api/
-TicketFlow.Events.Application/
-TicketFlow.Events.Domain/
-TicketFlow.Events.Infrastructure/
-Notification/
-TicketFlow.Notification.Api/ consumer-only, no domain layer
-Shared/
-TicketFlow.Contracts/ integration event contracts
-frontend/ React app
-tests/ domain unit tests, per service
+  Gateway/
+    TicketFlow.Gateway/               YARP reverse proxy
+  Services/
+    Booking/
+      TicketFlow.Booking.Api/
+      TicketFlow.Booking.Application/
+      TicketFlow.Booking.Domain/
+      TicketFlow.Booking.Infrastructure/
+    Events/
+      TicketFlow.Events.Api/
+      TicketFlow.Events.Application/
+      TicketFlow.Events.Domain/
+      TicketFlow.Events.Infrastructure/
+    Notification/
+      TicketFlow.Notification.Api/    consumer-only, no domain layer
+  Shared/
+    TicketFlow.Contracts/             integration event contracts
+frontend/                             React app
+tests/                                domain unit tests, per service
+```
+---
 
-Events and Booking follow Domain/Application/Infrastructure/Api layering. Notification deliberately doesn't — it's a pure side-effect consumer with no business rules, and adding layers it doesn't need would be the same anti-pattern as wrapping EF Core in an unnecessary Repository.
+Built by Oleg Ponа
