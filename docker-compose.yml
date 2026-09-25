@@ -1,3 +1,34 @@
+# One `docker compose up --build` runs the whole stack: infrastructure, the four .NET services and the frontend.
+# For local development with `dotnet run` / `npm run dev`, start only the infrastructure:
+#   docker compose up -d events-db booking-db notification-db rabbitmq redis
+#
+# Container config is injected as environment variables (ASP.NET maps Section__Key to Section:Key) rather than
+# appsettings.Production.json files: every override here is a hostname that only exists on this compose network,
+# so it lives next to the services that define those names. appsettings(.Development).json stay untouched.
+
+x-dotnet-env: &dotnet-env
+  ASPNETCORE_ENVIRONMENT: Production
+  RabbitMq__HostName: rabbitmq
+  RabbitMq__Port: "5672"
+  RabbitMq__UserName: ticketflow
+  RabbitMq__Password: ticketflow
+  Database__MigrateOnStartup: "true"
+
+# Probes GET /health inside the container. aspnet:10.0 (Ubuntu 24.04) has bash but neither curl nor wget, so
+# this speaks HTTP over bash's /dev/tcp and requires a 200 status line - no extra packages in the image and
+# no healthcheck mode in the app. start_interval polls fast only while the service is still starting.
+x-dotnet-healthcheck: &dotnet-healthcheck
+  test:
+    - CMD
+    - bash
+    - -c
+    - "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && head -n1 <&3 | grep -q ' 200 '"
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 15s
+  start_interval: 2s
+
 services:
   events-db:
     image: postgres:17-alpine
@@ -80,6 +111,106 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
+
+  events-api:
+    build:
+      context: .
+      dockerfile: src/Services/Events/TicketFlow.Events.Api/Dockerfile
+    container_name: tf-events-api
+    restart: unless-stopped
+    environment:
+      <<: *dotnet-env
+      ConnectionStrings__EventsDb: Host=events-db;Port=5432;Database=events;Username=ticketflow;Password=ticketflow
+      ConnectionStrings__Redis: redis:6379
+      Database__SeedSampleData: "true"
+    ports:
+      - "5039:8080"
+    healthcheck: *dotnet-healthcheck
+    depends_on:
+      events-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  booking-api:
+    build:
+      context: .
+      dockerfile: src/Services/Booking/TicketFlow.Booking.Api/Dockerfile
+    container_name: tf-booking-api
+    restart: unless-stopped
+    environment:
+      <<: *dotnet-env
+      ConnectionStrings__BookingDb: Host=booking-db;Port=5432;Database=booking;Username=ticketflow;Password=ticketflow
+      Services__EventsApi__BaseUrl: http://events-api:8080/
+    ports:
+      - "5182:8080"
+    healthcheck: *dotnet-healthcheck
+    depends_on:
+      booking-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      # Only needed at request time (price/title lookup), not to start. Requests arrive via the Gateway,
+      # which already waits for events-api to be healthy, so "started" is enough here.
+      events-api:
+        condition: service_started
+
+  notification-api:
+    build:
+      context: .
+      dockerfile: src/Services/Notification/TicketFlow.Notification.Api/Dockerfile
+    container_name: tf-notification-api
+    restart: unless-stopped
+    environment:
+      <<: *dotnet-env
+      ConnectionStrings__NotificationDb: Host=notification-db;Port=5432;Database=notification;Username=ticketflow;Password=ticketflow
+    ports:
+      - "5071:8080"
+    healthcheck: *dotnet-healthcheck
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/TicketFlow.Gateway/Dockerfile
+    container_name: tf-gateway
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ReverseProxy__Clusters__events__Destinations__events-api__Address: http://events-api:8080/
+      ReverseProxy__Clusters__bookings__Destinations__booking-api__Address: http://booking-api:8080/
+    ports:
+      - "8080:8080"
+    healthcheck: *dotnet-healthcheck
+    # The Gateway is the only public entry point: once it's healthy, both APIs it routes to are serving
+    # (migrated, DB reachable). That also closes the cold-start window for Booking -> Events calls, since
+    # no client request can reach Booking before Events is healthy.
+    depends_on:
+      events-api:
+        condition: service_healthy
+      booking-api:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The browser talks to the Gateway directly, so this is its published host port, not a container name.
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: tf-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
 
 volumes:
   events-db-data:

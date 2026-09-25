@@ -12,10 +12,15 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod()
         .AllowAnyHeader()));
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 app.UseCors(FrontendCorsPolicy);
 
 app.MapReverseProxy();
+
+// Liveness only: the Gateway has no state of its own. Compose makes it wait for the APIs' /health instead.
+app.MapHealthChecks("/health");
 
 app.Run();
