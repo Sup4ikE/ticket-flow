@@ -40,19 +40,19 @@ public class Event
             startsAt = startsAt.ToUniversalTime();
         
         if (string.IsNullOrWhiteSpace(title))
-            throw new DomainException("Title is required.");
+            throw new DomainException("Назва події обовʼязкова.");
 
         if (string.IsNullOrWhiteSpace(venue))
-            throw new DomainException("Venue is required.");
+            throw new DomainException("Місце проведення обовʼязкове.");
 
         if (startsAt <= now)
-            throw new DomainException("Event cannot start in the past.");
+            throw new DomainException("Дата початку події не може бути в минулому.");
 
         if (capacity <= 0)
-            throw new DomainException("Capacity must be greater than zero.");
+            throw new DomainException("Кількість місць має бути більшою за нуль.");
 
         if (price < 0)
-            throw new DomainException("Price cannot be negative.");
+            throw new DomainException("Ціна не може бути відʼємною.");
 
         return new Event
         {
@@ -73,7 +73,7 @@ public class Event
         Guid bookingId, int quantity, TimeSpan holdDuration, TimeProvider? timeProvider = null)
     {
         if (quantity <= 0)
-            throw new DomainException("Quantity must be greater than zero.");
+            throw new DomainException("Кількість квитків має бути більшою за нуль.");
 
         var now = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
@@ -132,10 +132,10 @@ public class Event
         var now = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         if (Status == EventStatus.Cancelled)
-            throw new DomainException("Cannot publish a cancelled event.");
+            throw new DomainException("Не можна опублікувати скасовану подію.");
 
         if (StartsAt <= now)
-            throw new DomainException("Cannot publish an event that already started.");
+            throw new DomainException("Не можна опублікувати подію, яка вже почалася.");
 
         Status = EventStatus.Published;
     }

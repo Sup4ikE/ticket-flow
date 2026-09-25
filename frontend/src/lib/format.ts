@@ -9,6 +9,15 @@ const dateFormatter = new Intl.DateTimeFormat(LOCALE, {
   minute: '2-digit',
 })
 
+const longDateFormatter = new Intl.DateTimeFormat(LOCALE, {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
+
+const timeFormatter = new Intl.DateTimeFormat(LOCALE, { hour: '2-digit', minute: '2-digit' })
+
 const weekdayFormatter = new Intl.DateTimeFormat(LOCALE, { weekday: 'short' })
 
 const priceFormatter = new Intl.NumberFormat(LOCALE, {
@@ -21,6 +30,12 @@ const relativeFormatter = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' 
 
 /** "30 вер., 12:33" */
 export const formatEventDate = (iso: string) => dateFormatter.format(new Date(iso))
+
+/** "середа, 30 вересня 2026 р." */
+export const formatEventDateLong = (iso: string) => longDateFormatter.format(new Date(iso))
+
+/** "12:33" */
+export const formatTime = (iso: string) => timeFormatter.format(new Date(iso))
 
 /** "вт" */
 export const formatWeekday = (iso: string) => weekdayFormatter.format(new Date(iso))

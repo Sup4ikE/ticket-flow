@@ -98,7 +98,7 @@ public class BookingTests
     {
         var ex = Assert.Throws<DomainException>(() => CreateBooking(pricePerTicket: -1m));
 
-        Assert.Equal("Price per ticket cannot be negative.", ex.Message);
+        Assert.Equal("Ціна квитка не може бути відʼємною.", ex.Message);
     }
 
     [Fact]

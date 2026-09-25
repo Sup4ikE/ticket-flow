@@ -30,22 +30,22 @@ public class Booking
         decimal pricePerTicket)
     {
         if (quantity <= 0)
-            throw new DomainException("Quantity must be greater than zero.");
+            throw new DomainException("Кількість квитків має бути більшою за нуль.");
         
         if (pricePerTicket < 0) 
-            throw new DomainException("Price per ticket cannot be negative.");
+            throw new DomainException("Ціна квитка не може бути відʼємною.");
         
         if (string.IsNullOrWhiteSpace(userEmail))
-            throw new DomainException("User email is required.");
+            throw new DomainException("Вкажіть email.");
         
         if (string.IsNullOrWhiteSpace(eventTitle))
-            throw new DomainException("Event title is required.");
+            throw new DomainException("Назва події обовʼязкова.");
         
         if (eventStartsAt <= DateTime.UtcNow)
-            throw new DomainException("Event cannot start in the past.");
+            throw new DomainException("Подія вже почалася — бронювання недоступне.");
         
         if (pricePerTicket * quantity > 10000)
-            throw new DomainException("Total price cannot exceed $10,000.");
+            throw new DomainException("Загальна сума бронювання не може перевищувати 10 000.");
 
         return new Booking()
         {

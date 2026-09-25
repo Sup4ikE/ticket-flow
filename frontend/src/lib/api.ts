@@ -1,3 +1,4 @@
+import type { CreateBookingRequest } from '@/types/booking'
 import type { EventDetails, EventSummary } from '@/types/event'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/+$/, '')
@@ -37,3 +38,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const getEvents = () => request<EventSummary[]>('/api/events')
 
 export const getEventById = (id: string) => request<EventDetails>(`/api/events/${encodeURIComponent(id)}`)
+
+/** 201 { id }. Price and event title are resolved server-side from Events - never sent by the client. */
+export const createBooking = (payload: CreateBookingRequest) =>
+  request<{ id: string }>('/api/bookings', { method: 'POST', body: JSON.stringify(payload) })
