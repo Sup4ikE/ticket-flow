@@ -56,9 +56,11 @@ jobs:
           --logger "trx;LogFilePrefix=results"
           --results-directory TestResults
 
-      # Surface the pass/fail counts on the run page without digging through the log.
+      # Surface the pass/fail counts on the run page without digging through the log. Cosmetic only, so it
+      # must never turn a green run red.
       - name: Test summary
         if: always()
+        continue-on-error: true
         shell: bash
         run: |
           {
@@ -70,7 +72,8 @@ jobs:
               [ -f "$f" ] || continue
               counters=$(grep -o '<Counters [^>]*>' "$f")
               get() { echo "$counters" | grep -o "$1=\"[0-9]*\"" | grep -o '[0-9]*'; }
-              name=$(grep -o 'storage="[^"]*\.dll"' "$f" | head -1 | sed 's/.*[\/\\]//; s/\.dll"//')
+              # -m1 rather than `| head -1`: head closing the pipe early makes grep exit 2 under pipefail.
+              name=$(grep -m1 -o 'storage="[^"]*\.dll"' "$f" | sed 's/.*[\/\\]//; s/\.dll"//')
               echo "| ${name:-$(basename "$f")} | $(get total) | $(get passed) | $(get failed) |"
             done
           } >> "$GITHUB_STEP_SUMMARY"
